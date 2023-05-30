@@ -2,13 +2,13 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 import os
-from flask import Flask, request, jsonify, url_for
+from flask import Flask, request, jsonify, url_for, abort
 from flask_migrate import Migrate
 from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
+from models import db, User, People, Planets, Favorites
 #from models import Person
 
 app = Flask(__name__)
@@ -36,27 +36,71 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
+# -------------------------------User------------------------------
+
 @app.route('/user', methods=['GET'])
 def handle_hello():
 
-    # body = request.get_json()
+    users = User.query.all()
+    return jsonify([user.serialize() for user in users]), 200
 
-    # user = User.name
 
-    all_users = {
-        'msg': 'user db'
-    }
+@app.route('/user/<string:item_id>', methods=['GET'])
+def get_user(item_id):
 
-    return all_users, 200
+    user = User.query.get(item_id)
+    if user is None:
+        abort(404)
+    return jsonify(user.serialize()), 200
+
+# -------------------------------People------------------------------
 
 @app.route('/people', methods=['GET'])
 def get_people():
 
-    all_people = {
-        'msg':'all people'
-    }
+    people= People.query.all()
 
-    return jsonify(all_people), 200
+    if people is None:
+        abort(404)
+
+
+    return jsonify([person.serialize() for person in people]), 200
+
+@app.route('/people/<string:person_id>', methods=['GET'])
+def get_person(person_id):
+
+    person = People.query.get(person_id)
+
+    if person is None:
+        abort(404)
+
+    return jsonify(person.serialize())
+
+@app.route('/people', methods=['POST'])
+def post_people():
+    newPerson = People(name=request.json['name'])
+
+    db.session.add(newPerson)
+    db.session.commit()
+
+    if newPerson is None:
+        abort(404)
+
+    return jsonify(newPerson.serialize())
+
+@app.route('/people/<string:people_id>', methods=['PUT'])
+def update_people(people_id):
+    people = People.query.get(people_id)
+
+    people.name = request.json['name']
+
+    if people is None:
+        abort(404)
+
+    db.session.commit()
+    return (jsonify(people.serialize()))
+
+# -------------------------------Planets------------------------------
 
 @app.route('/planets', methods=['GET'])
 def get_planets():
@@ -66,6 +110,9 @@ def get_planets():
     }
 
     return jsonify(all_planets), 200
+
+
+# -------------------------------Favorites------------------------------
 
 @app.route('/favorites', methods=['GET'])
 def get_favorites():
