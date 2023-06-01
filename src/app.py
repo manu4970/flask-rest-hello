@@ -53,6 +53,15 @@ def get_user(item_id):
         abort(404)
     return jsonify(user.serialize()), 200
 
+@app.route('/user/favorites/<string:user>')
+def get_userfav(user):
+
+    fav = Favorites.query.get(user)
+
+    if fav is None:
+        abort(404)
+    return jsonify(fav.serialize()), 200
+
 # -------------------------------People------------------------------
 
 @app.route('/people', methods=['GET'])
@@ -100,30 +109,102 @@ def update_people(people_id):
     db.session.commit()
     return (jsonify(people.serialize()))
 
+@app.route('/people/<string:people_id>', methods = ['DELETE'])
+def delete_person(people_id):
+    person = People.query.get(people_id)
+
+    db.session.delete(person)
+    db.session.commit()
+    return jsonify({'result': 'success'})
+
 # -------------------------------Planets------------------------------
 
 @app.route('/planets', methods=['GET'])
 def get_planets():
 
-    all_planets = {
-        'msg':'all Planets'
-    }
+    planets = Planets.query.all()
 
-    return jsonify(all_planets), 200
+    return jsonify([planet.serialize() for planet in planets]), 200
 
+@app.route('/planets/<string:planet_id>', methods=['GET'])
+def get_planet(planet_id):
 
+    planet = Planets.query.get(planet_id)
+
+    if planet is None:
+        abort(404)
+
+    return jsonify(planet.serialize())
+
+@app.route('/planets', methods=['POST'])
+def post_planets():
+    newplanet = Planets(name=request.json['name'])
+
+    db.session.add(newplanet)
+    db.session.commit()
+
+    if newplanet is None:
+        abort(404)
+
+    return jsonify(newplanet.serialize())
+
+@app.route('/planets/<string:planets_id>', methods=['PUT'])
+def update_planets(planets_id):
+
+    planets = Planets.query.get(planets_id)
+
+    planets.name = request.json['name']
+
+    if planets is None:
+        abort(404)
+
+    db.session.commit()
+    return (jsonify(planets.serialize()))
+
+@app.route('/planets/<string:planet_id>', methods = ['DELETE'])
+def delete_planet(planet_id):
+    planet = Planets.query.get(planet_id)
+
+    db.session.delete(planet)
+    db.session.commit()
+    return jsonify({'result': 'success'})
 # -------------------------------Favorites------------------------------
 
 @app.route('/favorites', methods=['GET'])
 def get_favorites():
 
-    all_favorites = {
-        'msg':'all favorites'
-    }
+    favs = Favorites.query.all()
 
-    return jsonify(all_favorites), 200
+
+    return jsonify([fav.serialize() for fav in favs]), 200
+
+
+@app.route('/favorites', methods=['POST'])
+def post_favorites():
+    newfav = Favorites(id_people=request.json['id_people'],id_planets=request.json['id_planets'],id_users=request.json['id_users'])
+
+    db.session.add(newfav)
+    db.session.commit()
+
+    if newfav is None:
+        abort(404)
+
+    return jsonify(newfav.serialize())
+
+
+
+
+
+
+
+
+
+
+
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
     app.run(host='0.0.0.0', port=PORT, debug=False)
+
+
