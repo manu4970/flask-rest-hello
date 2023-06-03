@@ -1,26 +1,17 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import relationship
 
 db = SQLAlchemy()
 
-class User(db.Model):
-    id = db.Column(db.Integer(), primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    username = db.Column(db.String(120), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(80), unique=False, nullable=False)
-    is_active = db.Column(db.Boolean(), unique=False, nullable=False)
+peopleFavs = db.Table("peopleFav",
+     db.Column("user_id", db.Integer, db.ForeignKey("user.id"), primary_key=True),
+     db.Column("people_id", db.Integer, db.ForeignKey("people.id"), primary_key=True)
+)
 
-    def __repr__(self):
-        return '<User %r>' % self.username
-
-    def serialize(self):
-        return {
-            "id": self.id,
-            "email": self.email,
-            "username": self.username,
-            "is_active": self.is_active,
-            # do not serialize the password, its a security breach
-        }
+planetsFavs = db.Table("planetsFav",
+     db.Column("user_id", db.Integer, db.ForeignKey("user.id"), primary_key=True),
+     db.Column("planets_id", db.Integer, db.ForeignKey("planets.id"), primary_key=True)
+)
     
 class People(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
@@ -48,18 +39,34 @@ class Planets(db.Model):
             "name": self.name,
         }
     
-class Favorites(db.Model):
+
+class User(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
-    id_people = db.Column(db.Integer(), db.ForeignKey(People.id),nullable=True)
-    id_planets = db.Column(db.Integer(), db.ForeignKey(Planets.id),nullable=True)
-    id_users = db.Column(db.Integer(), db.ForeignKey(User.id))
+    name = db.Column(db.String(120), nullable=False)
+    username = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(80), unique=False, nullable=False)
+    is_active = db.Column(db.Boolean(), unique=False, nullable=False)
+
+    peopleFav = db.relationship(People,
+                    secondary=peopleFavs,
+                    lazy='subquery',
+                    backref=db.backref('users', lazy=True))
+    planetsFav = db.relationship(Planets,
+                    secondary=planetsFavs,
+                    lazy='subquery',
+                    backref=db.backref('users', lazy=True))
 
     def __repr__(self):
-        return '<Favorites %r>' % self.id
+        return '<User %r>' % self.username
 
     def serialize(self):
         return {
             "id": self.id,
-            "id_people": self.id_people,
-            "id_planets": self.id_planets,
+            "email": self.email,
+            "username": self.username,
+            "is_active": self.is_active,
+            "people_fav": self.peopleFav,
+            "planet_fav": self.planetsFav
+            # do not serialize the password, its a security breach
         }

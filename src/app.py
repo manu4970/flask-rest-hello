@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, People, Planets, Favorites
+from models import db, User, People, Planets
 #from models import Person
 
 app = Flask(__name__)
@@ -53,14 +53,17 @@ def get_user(item_id):
         abort(404)
     return jsonify(user.serialize()), 200
 
-@app.route('/user/favorites/<string:user>')
-def get_userfav(user):
+@app.route('/user/<string:user_id>/favorites')
+def get_userfav(user_id):
 
-    fav = Favorites.query.get(user)
+    user = User.query.get(user_id)
+    planet = Planets.query.get(user_id)
 
-    if fav is None:
+
+
+    if user is None:
         abort(404)
-    return jsonify(fav.serialize()), 200
+    return jsonify(user.serialize(), planet.serialize()), 200
 
 # -------------------------------People------------------------------
 
