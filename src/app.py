@@ -9,14 +9,15 @@ from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
 from models import db, User, People, Planets, Favorites
-#from models import Person
+# from models import Person
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
 db_url = os.getenv("DATABASE_URL")
 if db_url is not None:
-    app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace("postgres://", "postgresql://")
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace(
+        "postgres://", "postgresql://")
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/test.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -27,18 +28,23 @@ CORS(app)
 setup_admin(app)
 
 # Handle/serialize errors like a JSON object
+
+
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
 # generate sitemap with all your endpoints
+
+
 @app.route('/')
 def sitemap():
     return generate_sitemap(app)
 
 # -------------------------------User------------------------------
 
-@app.route('/user', methods=['GET'])
+
+@app.route('/users', methods=['GET'])
 def handle_hello():
 
     users = User.query.all()
@@ -53,27 +59,30 @@ def get_user(item_id):
         abort(404)
     return jsonify(user.serialize()), 200
 
-@app.route('/user/favorites/<string:user>')
-def get_userfav(user):
 
-    fav = Favorites.query.get(user)
+@app.route('/user/<string:user_id>/favorites')
+def get_userfav(user_id):
 
-    if fav is None:
+    user = User.query.get(user_id)
+    planet = Planets.query.get(user_id)
+
+    if user is None:
         abort(404)
-    return jsonify(fav.serialize()), 200
+    return jsonify(user.serialize(), planet.serialize()), 200
 
 # -------------------------------People------------------------------
+
 
 @app.route('/people', methods=['GET'])
 def get_people():
 
-    people= People.query.all()
+    people = People.query.all()
 
     if people is None:
         abort(404)
 
-
     return jsonify([person.serialize() for person in people]), 200
+
 
 @app.route('/people/<string:person_id>', methods=['GET'])
 def get_person(person_id):
@@ -84,6 +93,7 @@ def get_person(person_id):
         abort(404)
 
     return jsonify(person.serialize())
+
 
 @app.route('/people', methods=['POST'])
 def post_people():
@@ -97,6 +107,7 @@ def post_people():
 
     return jsonify(newPerson.serialize())
 
+
 @app.route('/people/<string:people_id>', methods=['PUT'])
 def update_people(people_id):
     people = People.query.get(people_id)
@@ -109,7 +120,8 @@ def update_people(people_id):
     db.session.commit()
     return (jsonify(people.serialize()))
 
-@app.route('/people/<string:people_id>', methods = ['DELETE'])
+
+@app.route('/people/<string:people_id>', methods=['DELETE'])
 def delete_person(people_id):
     person = People.query.get(people_id)
 
@@ -119,12 +131,14 @@ def delete_person(people_id):
 
 # -------------------------------Planets------------------------------
 
+
 @app.route('/planets', methods=['GET'])
 def get_planets():
 
     planets = Planets.query.all()
 
     return jsonify([planet.serialize() for planet in planets]), 200
+
 
 @app.route('/planets/<string:planet_id>', methods=['GET'])
 def get_planet(planet_id):
@@ -135,6 +149,7 @@ def get_planet(planet_id):
         abort(404)
 
     return jsonify(planet.serialize())
+
 
 @app.route('/planets', methods=['POST'])
 def post_planets():
@@ -147,6 +162,7 @@ def post_planets():
         abort(404)
 
     return jsonify(newplanet.serialize())
+
 
 @app.route('/planets/<string:planets_id>', methods=['PUT'])
 def update_planets(planets_id):
@@ -161,7 +177,8 @@ def update_planets(planets_id):
     db.session.commit()
     return (jsonify(planets.serialize()))
 
-@app.route('/planets/<string:planet_id>', methods = ['DELETE'])
+
+@app.route('/planets/<string:planet_id>', methods=['DELETE'])
 def delete_planet(planet_id):
     planet = Planets.query.get(planet_id)
 
@@ -170,41 +187,61 @@ def delete_planet(planet_id):
     return jsonify({'result': 'success'})
 # -------------------------------Favorites------------------------------
 
+
 @app.route('/favorites', methods=['GET'])
-def get_favorites():
+def Favorites_todos():
 
-    favs = Favorites.query.all()
+    query = Favorites.query.all()
+    results = list(map(lambda x: x.serialize2(), query))
+
+    return jsonify(results), 200
 
 
-    return jsonify([fav.serialize() for fav in favs]), 200
+@app.route('/favorites/<int:id>', methods=['GET'])
+def favoritos_unico(id):
+
+    favoritos = Favorites.query.get(id)
+    if favoritos is None:
+        raise APIException('Favorito not found', status_code=404)
+    results = favoritos.serialize2()
+
+    return jsonify(results), 200
 
 
 @app.route('/favorites', methods=['POST'])
-def post_favorites():
-    newfav = Favorites(id_people=request.json['id_people'],id_planets=request.json['id_planets'],id_users=request.json['id_users'])
+def add_Favorites():
 
-    db.session.add(newfav)
+    # recibir info del request
+    request_body = request.get_json()
+    print(request_body)
+
+    fav = Favorites(usuario_id=request.json['user_id'],
+                    planeta_id=request.json["planets_id"],
+                    personaje_id=request.json["people_id"])
+
+    db.session.add(fav)
     db.session.commit()
 
-    if newfav is None:
-        abort(404)
-
-    return jsonify(newfav.serialize())
+    return jsonify("Un exito, se ha agregado el favorito"), 200
 
 
+@app.route('/del_favorites/<int:id>', methods=['DELETE'])
+def del_fav(id):
 
+    # recibir info del request
 
+    fav = Favorites.query.get(id)
+    if fav is None:
+        raise APIException('Favorite not found', status_code=404)
 
+    db.session.delete(fav)
 
+    db.session.commit()
 
-
-
-
+    return jsonify("Borraste bien la informacion"), 200
 
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
     app.run(host='0.0.0.0', port=PORT, debug=False)
-
-
